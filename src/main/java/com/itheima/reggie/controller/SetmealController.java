@@ -127,8 +127,8 @@ public class SetmealController {
      * @return
      */
     @PostMapping("/status/{status}")
-    @CacheEvict(value = "setmealCache",allEntries = true)//清除所有缓存  使用spring cache缓存
-    // @CacheEvict(value = "setmealCache", key = "#setmeal.categoryId+'_'+ #setmeal.status" )//清除单个的key
+  @CacheEvict(value = "setmealCache",allEntries = true)//清除所有缓存  使用spring cache缓存
+  //@CacheEvict(value = "setmealCache", key = "#setmeal.categoryId+'_'+ #setmeal.status" )//清除单个的key
     public R<String> updateMulStatus(@PathVariable Integer status, Long[] ids) {
         List<Long> list = Arrays.asList(ids);
         for (Long id : ids) {
