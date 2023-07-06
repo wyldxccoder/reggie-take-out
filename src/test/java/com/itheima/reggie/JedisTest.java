@@ -26,7 +26,7 @@ public class JedisTest {
 //        System.out.println(hget);
 
 
-        //遍历所有存在 数据
+        //遍历所有存在 数据 .
         jedis.keys("*").forEach(System.out::println);
       //删除
         jedis.del("uername","city","list","list2","list3");

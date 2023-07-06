@@ -8,9 +8,9 @@ spring:
     name: reggie_take_out
     #Redis相关配置
   redis:
-    host: 101.37.160.172
-    port: 6379
-    password: 123456
+    host: 101.37.160.172  #服务器ip  本机就是localhost
+    port: 6379  #端口号
+    password: 123456  #redis 密码
     database: 0 #操作的是0号数据库
     jedis:
       #Redis连接池配置
