@@ -16,6 +16,8 @@ import com.itheima.reggie.service.SetmealService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
@@ -46,14 +48,15 @@ public class SetmealController {
      * @return
      */
     @PostMapping
+    @CacheEvict(value = "setmealCache",allEntries = true)//清除所有缓存    使用spring cache缓存
+    //   @CacheEvict(value = "setmealCache", key = "#setmealDto.categoryId+'_'+#setmealDto.status" ) //清除单个的key
     public R<String> save(@RequestBody SetmealDto setmealDto) {
 
         //添加套餐 需要清理redis缓存  保证数据的正确性
         // Set keys = redisTemplate.keys("setmeal_*");  //清理所有key
         //清除单个的key
-        String keys="setmeal_"+setmealDto.getCategoryId()+"_1";
-        redisTemplate.delete(keys);
-
+//        String keys="setmeal_"+setmealDto.getCategoryId()+"_1";
+//        redisTemplate.delete(keys);
 
         setmealService.saveWithDish(setmealDto);
         return R.success("新增套餐成功");
@@ -118,32 +121,39 @@ public class SetmealController {
 
     /**
      * 根据id(批量)停售/启售套餐信息
+     *
      * @param status
      * @param ids
      * @return
      */
     @PostMapping("/status/{status}")
-    public R<String> updateMulStatus(@PathVariable Integer status, Long[] ids){
+    @CacheEvict(value = "setmealCache",allEntries = true)//清除所有缓存  使用spring cache缓存
+    // @CacheEvict(value = "setmealCache", key = "#setmeal.categoryId+'_'+ #setmeal.status" )//清除单个的key
+    public R<String> updateMulStatus(@PathVariable Integer status, Long[] ids) {
         List<Long> list = Arrays.asList(ids);
-
         for (Long id : ids) {
             Setmeal setmeal = setmealService.getById(id);
-            //修改套餐销售状态需要清理redis缓存  保证数据的正确性
-            // Set keys = redisTemplate.keys("dish_*");  //清理所有key
-            //清理单个key
-            String keys="dish_"+setmeal.getCategoryId()+"_1";
-            redisTemplate.delete(keys);
-
         }
+
+//        for (Long id : ids) {
+//            Setmeal setmeal = setmealService.getById(id);
+//            //修改套餐销售状态需要清理redis缓存  保证数据的正确性
+//            // Set keys = redisTemplate.keys("dish_*");  //清理所有key
+//            //清理单个key
+//            String keys="dish_"+setmeal.getCategoryId()+"_1";
+//            redisTemplate.delete(keys);
+//
+//        }
 
         //构造条件构造器
         LambdaUpdateWrapper<Setmeal> updateWrapper = new LambdaUpdateWrapper<>();
         //添加过滤条件
-        updateWrapper.set(Setmeal::getStatus,status).in(Setmeal::getId,list);
+        updateWrapper.set(Setmeal::getStatus, status).in(Setmeal::getId, list);
         setmealService.update(updateWrapper);
 
         return R.success("套餐信息修改成功");
     }
+
     /**
      * 修改套餐 显示原来套餐
      */
@@ -152,17 +162,20 @@ public class SetmealController {
         SetmealDto setmealDto = setmealService.getByIdWithDish(id);
         return R.success(setmealDto);
     }
+
     /**
      * 修改套餐
      */
     @PutMapping
+    @CacheEvict(value = "setmealCache",allEntries = true)//清除所有缓存    使用spring cache缓存
+    //   @CacheEvict(value = "setmealCache", key = "#setmealDto.categoryId+'_'+#setmealDto.status")//清除单个的key
     public R<String> update(@RequestBody SetmealDto setmealDto) {
 
         //修改套餐 需要清理redis缓存  保证数据的正确性
         // Set keys = redisTemplate.keys("setmeal_*");  //清理所有key
         //清理单个的key
-        String keys="setmeal_"+setmealDto.getCategoryId()+"_1";
-        redisTemplate.delete(keys);
+//        String keys="setmeal_"+setmealDto.getCategoryId()+"_1";
+//        redisTemplate.delete(keys);
 
 
         setmealService.updateWithDish(setmealDto);
@@ -171,33 +184,41 @@ public class SetmealController {
 
     /**
      * 根据条件查询套餐数据 移动端展示
+     *
      * @param setmeal
      * @return
      */
-   @GetMapping("/list")
-    public R<List<Setmeal>> list( Setmeal setmeal){
 
-       List<Setmeal> setmealList=null;
-       //动态构造key
-       String key="setmeal_"+setmeal.getCategoryId()+"_"+setmeal.getStatus();
-       //先从redis中获取缓存数据
-       setmealList  = (List<Setmeal>) redisTemplate.opsForValue().get(key);
-       if(setmealList!=null){
-           //如果存在,直接返回,不需要在查数据库
-           return R.success(setmealList);
-       }
-       //如果不存在 查数据库,存入redis缓存中
-        LambdaQueryWrapper<Setmeal>queryWrapper=new LambdaQueryWrapper<>();
-        queryWrapper.eq(setmeal.getCategoryId() !=null,Setmeal::getCategoryId,setmeal.getCategoryId());
-       queryWrapper.eq(setmeal.getStatus() !=null,Setmeal::getStatus,setmeal.getStatus());
-       queryWrapper.orderByDesc(Setmeal::getUpdateTime);
-       List<Setmeal> list = setmealService.list(queryWrapper);
-       //如果不存在 查数据库,存入redis缓存中
-       redisTemplate.opsForValue().set(key,setmealList,60, TimeUnit.MINUTES);
+//     Cacheable:在方法执行前spring先查看缓存中是否有数据，如果有数据，则直接返回缓存数据;若没有数据，调用方法并将方法返回值放到缓存中
+//     若数据库没有找到数据，以null为key
+//     condition：缓存条件，满足条件才缓存
+//@Cacheable(value = "userCache", key = "#id", unless = "#result == null")
 
-       return R.success(list);
+    @GetMapping("/list")
+    @Cacheable(value = "setmealCache", key = "#setmeal.categoryId + '_ '+ #setmeal.status") //  使用spring cache缓存
+    public R<List<Setmeal>> list(Setmeal setmeal) {
 
-   }
+//       List<Setmeal> setmealList=null;
+//       //动态构造key
+//       String key="setmeal_"+setmeal.getCategoryId()+"_"+setmeal.getStatus();
+//       //先从redis中获取缓存数据
+//       setmealList  = (List<Setmeal>) redisTemplate.opsForValue().get(key);
+//       if(setmealList!=null){
+//           //如果存在,直接返回,不需要在查数据库
+//           return R.success(setmealList);
+//       }
+        //如果不存在 查数据库,存入redis缓存中
+        LambdaQueryWrapper<Setmeal> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(setmeal.getCategoryId() != null, Setmeal::getCategoryId, setmeal.getCategoryId());
+        queryWrapper.eq(setmeal.getStatus() != null, Setmeal::getStatus, setmeal.getStatus());
+        queryWrapper.orderByDesc(Setmeal::getUpdateTime);
+        List<Setmeal> list = setmealService.list(queryWrapper);
+        //如果不存在 查数据库,存入redis缓存中
+//       redisTemplate.opsForValue().set(key,setmealList,60, TimeUnit.MINUTES);
+
+        return R.success(list);
+
+    }
 }
 
 
