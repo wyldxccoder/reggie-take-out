@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @RestController
 @Slf4j
@@ -110,6 +111,7 @@ public class SetmealController {
      */
     @DeleteMapping
     public R<String> delete(@RequestParam List<Long> ids) {
+
         setmealService.removeWithDish(ids);
         return R.success("删除套餐成功");
     }
@@ -123,6 +125,16 @@ public class SetmealController {
     @PostMapping("/status/{status}")
     public R<String> updateMulStatus(@PathVariable Integer status, Long[] ids){
         List<Long> list = Arrays.asList(ids);
+
+        for (Long id : ids) {
+            Setmeal setmeal = setmealService.getById(id);
+            //修改套餐销售状态需要清理redis缓存  保证数据的正确性
+            // Set keys = redisTemplate.keys("dish_*");  //清理所有key
+            //清理单个key
+            String keys="dish_"+setmeal.getCategoryId()+"_1";
+            redisTemplate.delete(keys);
+
+        }
 
         //构造条件构造器
         LambdaUpdateWrapper<Setmeal> updateWrapper = new LambdaUpdateWrapper<>();

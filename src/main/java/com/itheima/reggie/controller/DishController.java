@@ -7,6 +7,7 @@ import com.itheima.reggie.dto.DishDto;
 import com.itheima.reggie.entity.Category;
 import com.itheima.reggie.entity.Dish;
 import com.itheima.reggie.entity.DishFlavor;
+import com.itheima.reggie.entity.Setmeal;
 import com.itheima.reggie.service.CategoryService;
 import com.itheima.reggie.service.DishFlavorService;
 import com.itheima.reggie.service.DishService;
@@ -141,14 +142,24 @@ public class DishController {
     public R<String> updateStatusById(@PathVariable Integer status, Long[] ids) {
         // 增加日志验证是否接收到前端参数。
         log.info("根据id修改菜品的状态:{},id为：{}", status, ids);
+
         // 遍历每个id,修改id为ids数组中的数据的菜品状态status为前端页面提交的status。
         for (Long id : ids) {
             //根据id得到每个dish菜品。
             Dish dish = dishService.getById(id);
+
+            //修改菜品销售状态需要清理redis缓存  保证数据的正确性
+            // Set keys = redisTemplate.keys("dish_*");  //清理所有key
+            //清理单个key
+            String keys="dish_"+dish.getCategoryId()+"_1";
+            redisTemplate.delete(keys);
+
+
             //设置菜品的状态
             dish.setStatus(status);
             //更新菜品
             dishService.updateById(dish);
+
         }
         return R.success("修改菜品状态成功");
     }
@@ -158,6 +169,7 @@ public class DishController {
      */
     @DeleteMapping
     public R<String> delete(@RequestParam List<Long> ids) {
+
         dishService.removeWithFlavor(ids);
         return R.success("删除菜品成功");
     }
@@ -190,7 +202,7 @@ public class DishController {
 
         List<DishDto> dishDtoList=null;
         //动态构造key
-        String key="dish_"+dish.getCategoryId()+"_"+dish.getStatus();
+        String key="dish_"+dish.getCategoryId()+"_1";
         //先从redis中获取缓存数据
         dishDtoList  = (List<DishDto>) redisTemplate.opsForValue().get(key);
         if(dishDtoList!=null){

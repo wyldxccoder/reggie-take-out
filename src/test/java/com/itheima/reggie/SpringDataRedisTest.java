@@ -61,7 +61,7 @@ public class SpringDataRedisTest {
         String age = (String) redisTemplate.opsForHash().get("002", "age");
         System.out.println(age);
 
-        //获得hash结构中的所有字段
+        //获得hash结构中的所有字段 file
         redisTemplate.opsForHash().keys("002").forEach(System.out::println);
 
 
@@ -82,7 +82,6 @@ public class SpringDataRedisTest {
         redisTemplate.opsForList().leftPushAll("mylist", "b", "c");
 
         //取值
-
         redisTemplate.opsForList().range("mylist", 0, -1).forEach(System.out::println);
 
         //获得列表长度 llen
